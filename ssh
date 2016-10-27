@@ -1,0 +1,3 @@
+#!/bin/bash
+gradle -q build
+gradle run -PappArgs="['$1', '$2']"

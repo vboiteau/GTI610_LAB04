@@ -33,11 +33,11 @@ public class UDPAnswerPacketCreator {
 	/** Holder (thread safe) */
 	private static class SingletonHolder
 	{	
-		/** Instance unique non préinitialisée */
+		/** Instance unique non prÃ©initialisÃ©e */
 		private final static UDPAnswerPacketCreator instance = new UDPAnswerPacketCreator();
 	}
 	 
-	/** Point d'accès pour l'instance unique du singleton */
+	/** Point d'accÃ¨s pour l'instance unique du singleton */
 	public static UDPAnswerPacketCreator getInstance()
 	{
 		return SingletonHolder.instance;
