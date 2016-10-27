@@ -1,5 +1,8 @@
 package com.TCP;
-import com.TCP.TCPReciever;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.io.OutputStream;
+import java.net.InetAddress;
 
 public class ServerTCP {
     public static void main (String[] args) {
@@ -8,7 +11,6 @@ public class ServerTCP {
 	    System.exit(1);
 	}
 	int port=0;
-	System.out.println(args[1]);
 	try {
 	    port = Integer.parseInt(args[1]);
 	} catch (Exception e) {
@@ -19,6 +21,17 @@ public class ServerTCP {
 	String data = "Hello from server";
 	try {
 	    TCPReciever reciever = new TCPReciever(args[0], port);
+	    reciever.start();
+	    Runtime.getRuntime().addShutdownHook(new Thread() {
+		public void run () {
+		try {
+		    Thread.sleep(2000);
+		    System.out.println("Shuting down ...");
+		} catch (InterruptedException e) {
+		    e.printStackTrace();
+		}
+		}
+	    });
 	    //Socket connexionSocket = server.accept();
 	    //OutputStream out = connexionSocket.getOutputStream();
 	    //out.write(data.getBytes());

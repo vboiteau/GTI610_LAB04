@@ -11,12 +11,23 @@ public class TCPReciever extends Thread {
     
     public TCPReciever(String AdrIp, int Port) {
         this.adrIp = AdrIp;
-        port = port;
+        port = Port;
         System.out.println(this.port);
         try {
-            this.server = new ServerSocket(this.port, 50, InetAddress.getByName(this.adrIp)); 
+            this.server = new ServerSocket(this.port); 
         } catch (Exception e) {
             System.out.println("wait");
         }
+    }
+    
+    public void run () {
+	try {
+	    String data = "Hello from server";
+	    Socket connexionSocket = this.server.accept();
+	    OutputStream out = connexionSocket.getOutputStream();
+	    out.write(data.getBytes());
+	} catch (Exception e) {
+	    System.out.println("Error occured while server creation");
+	}
     }
 };
