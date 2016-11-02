@@ -22,16 +22,8 @@ public class ServerTCP {
 	try {
 	    TCPReciever reciever = new TCPReciever(args[0], port);
 	    reciever.start();
-	    Runtime.getRuntime().addShutdownHook(new Thread() {
-		public void run () {
-		try {
-		    Thread.sleep(2000);
-		    System.out.println("Shuting down ...");
-		} catch (InterruptedException e) {
-		    e.printStackTrace();
-		}
-		}
-	    });
+		ClientTCP client = new ClientTCP(args[0], port);
+		client.start();
 	    //Socket connexionSocket = server.accept();
 	    //OutputStream out = connexionSocket.getOutputStream();
 	    //out.write(data.getBytes());

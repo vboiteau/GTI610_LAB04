@@ -14,7 +14,7 @@ public class TCPReciever extends Thread {
         port = Port;
         System.out.println(this.port);
         try {
-            this.server = new ServerSocket(this.port); 
+            this.server = new ServerSocket(this.port, 50, InetAddress.getByName(this.adrIp)); 
         } catch (Exception e) {
             System.out.println("wait");
         }
