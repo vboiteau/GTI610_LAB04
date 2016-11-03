@@ -1,6 +1,10 @@
 package TCP;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetAddress;
 
@@ -14,20 +18,24 @@ public class TCPReciever extends Thread {
         port = Port;
         System.out.println(this.port);
         try {
-            this.server = new ServerSocket(this.port, 50, InetAddress.getByName(this.adrIp)); 
+            server = new ServerSocket(this.port); 
         } catch (Exception e) {
-            System.out.println("wait");
+            System.out.println(e);
         }
     }
     
     public void run () {
 	try {
-	    String data = "Hello from server";
-	    Socket connexionSocket = this.server.accept();
-	    OutputStream out = connexionSocket.getOutputStream();
-	    out.write(data.getBytes());
+	    while(true){
+		    Socket connexionSocket = this.server.accept();
+	    	BufferedReader input = new BufferedReader(new InputStreamReader(connexionSocket.getInputStream()));
+	        DataOutputStream output = new DataOutputStream(connexionSocket.getOutputStream());
+	        String inputString = input.readLine();
+	        String clientString = connexionSocket.getRemoteSocketAddress().toString().substring(1);
+	        output.writeBytes(inputString.toUpperCase()+"\t"+clientString+"\n");
+	    }
 	} catch (Exception e) {
-	    System.out.println("Error occured while server creation");
+		System.out.println(e);
 	}
     }
 };

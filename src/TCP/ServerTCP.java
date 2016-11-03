@@ -19,18 +19,20 @@ public class ServerTCP {
 	}
 	System.out.format("Port:\t%d\n\n", port);
 	String data = "Hello from server";
+	ClientTCP client = null;
 	try {
 	    TCPReciever reciever = new TCPReciever(args[0], port);
 	    reciever.start();
-		ClientTCP client = new ClientTCP(args[0], port);
-		client.start();
+		while (true) {
+			client = new ClientTCP(args[0], port);
+		}
 	    //Socket connexionSocket = server.accept();
 	    //OutputStream out = connexionSocket.getOutputStream();
 	    //out.write(data.getBytes());
 	} catch (Exception e) {
-	    System.out.println("Error occured while server creation");
+		System.out.println(e);
 	    System.exit(1);
 	}
-	
+	client.close();
     }
 };
