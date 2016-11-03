@@ -3,6 +3,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -163,7 +164,8 @@ public class UDPReceiver extends Thread {
 					}
 					domainName += ".";
 				}
-				
+				QueryFinder qF = new QueryFinder(DNSFile);
+				AnswerRecorder aR = new AnswerRecorder(DNSFile);
 				// ****** Dans le cas d'un paquet requete (0) ***** QR = 17 bits
 				if (((buff[2] >> 7) & 1) == 0)
 				{
@@ -211,6 +213,21 @@ public class UDPReceiver extends Thread {
 					current+=2;
 					String rData = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+rDLength)).toString();
 					System.out.format("%s\t%d\t%h\t%s\n", domainName, ttl, rDLength, rData);
+					List<String> addresses = qF.StartResearch(domainName);
+					boolean found = false;
+					if(addresses.size()>0){
+						for (String address : addresses) {
+							if(address==rData){
+								found = true;
+							}
+						}
+					}
+					if(!found){
+						aR.StartRecord(domainName, rData);
+					}
+					UDPSender UDPS = new UDPSender(paquetRecu.getAddress().toString(), paquetRecu.getPort(), serveur);
+					UDPS.SendPacketNow(paquetRecu);
+			 
 					// *Lecture du Query Domain name, a partir du 13 byte
 					
 						// *Passe par dessus Type et Class
