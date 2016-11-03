@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -61,7 +62,7 @@ public class UDPReceiver extends Thread {
 	protected int portRedirect = 53; // port  de redirection (par defaut)
 	protected int port; // port de rï¿½ception
 	private String adrIP = null; //bind ip d'ecoute
-	private String DomainName = "none";
+	private String domainName = "none";
 	private String DNSFile = null;
 	private boolean RedirectionSeulement = false;
 	
@@ -92,7 +93,7 @@ public class UDPReceiver extends Thread {
 	}
 
 	public String gethostNameFromPacket() {
-		return DomainName;
+		return domainName;
 	}
 
 	public String getAdrIP() {
@@ -137,17 +138,50 @@ public class UDPReceiver extends Thread {
 				// *Creation d'un DataInputStream ou ByteArrayInputStream pour
 				// manipuler les bytes du paquet
 
-				ByteArrayInputStream TabInputStream = new ByteArrayInputStream (paquetRecu.getData());
+				ByteArrayInputStream tabInputStream = new ByteArrayInputStream (paquetRecu.getData());
 				
-				System.out.println(buff.toString());
+				System.out.println(Arrays.toString(buff));
+				tabInputStream.read(buff);
 				
-				// ****** Dans le cas d'un paquet requete *****
-
+				// ****** Dans le cas d'un paquet requete (0) ***** QR = 17 bits
+				if (((buff[2] >> 7) & 1) == 0)
+				{
+					System.out.println("requete");
 					// *Lecture du Query Domain name, a partir du 13 byte
-
-					// *Sauvegarde du Query Domain name
+					String input = new String(buff);
+					int lengthName = buff[12];
+					int lengthExtention = buff[12+lengthName+1];
+					int length;
 					
+					int current = 12;
+					domainName = new String();
+					
+					while(buff[current] != 0)
+					{
+						length = buff[current];
+						for (int i = current+1; i < current+length+1; i++){
+							domainName += (char)buff[i];
+						}
+						domainName += ".";
+						current = current + length + 1;
+					}
+					
+					/*domainName = new String(Arrays.copyOfRange(buff, 13, 13+lengthName));
+					domainName += ".";
+					domainName += new String(Arrays.copyOfRange(buff, 14+lengthName, 14+lengthName+lengthExtention));
+					*/
+					/*tabInputStream.read(buff, 13+1+lengthName, 1);
+					lengthExtention = Integer.parseInt(Arrays.toString(buff));
+					
+					tabInputStream.read(buff, 13+1+lengthName+1, lengthExtention);
+					domainName += Arrays.toString(buff);*/
+					
+					System.out.println(domainName);
+					System.out.println(new String(Arrays.copyOfRange(buff, 13, 13+lengthName)));
+						
 					// *Sauvegarde de l'adresse, du port et de l'identifiant de la requete
+					
+					
 
 					// *Si le mode est redirection seulement
 						// *Rediriger le paquet vers le serveur DNS
@@ -161,8 +195,9 @@ public class UDPReceiver extends Thread {
 							// *Creer le paquet de reponse a l'aide du UDPAnswerPaquetCreator
 							// *Placer ce paquet dans le socket
 							// *Envoyer le paquet
-				
+				}
 				// ****** Dans le cas d'un paquet reponse *****
+				else {
 						// *Lecture du Query Domain name, a partir du 13 byte
 						
 						// *Passe par dessus Type et Class
@@ -181,10 +216,11 @@ public class UDPReceiver extends Thread {
 						// ayant emis une requete avec cet identifiant				
 						// *Placer ce paquet dans le socket
 						// *Envoyer le paquet
+				}
 			}
 //			serveur.close(); //closing server
 		} catch (Exception e) {
-			System.err.println("Problï¿½me ï¿½ l'exï¿½cution :");
+			System.err.println("Problème à l'exécution :");
 			e.printStackTrace(System.err);
 		}
 	}
