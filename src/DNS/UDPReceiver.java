@@ -5,6 +5,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -144,27 +145,32 @@ public class UDPReceiver extends Thread {
 				
 				System.out.println(Arrays.toString(buff));
 				tabInputStream.read(buff);
+				String input = new String(buff);
+				int lengthName = buff[12];
+				int lengthExtention = buff[12+lengthName+1];
+				int length;
 				
+				int current = 12;
+				domainName = new String();
+				
+				while(true)
+				{
+					length = buff[current];
+					for (int i = current+1; i < current+length+1; i++){
+						domainName += (char)buff[i];
+					}
+					current = current + length + 1;
+					if(buff[current]==0){
+						break;
+					}
+					domainName += ".";
+				}
+				QueryFinder qF = new QueryFinder(DNSFile);
+				AnswerRecorder aR = new AnswerRecorder(DNSFile);
 				// ****** Dans le cas d'un paquet requete (0) ***** QR = 17 bits
 				if (((buff[2] >> 7) & 1) == 0)
 				{
 					// *Lecture du Query Domain name, a partir du 13 byte
-					int length;					
-					int current = 12;
-					domainName = new String();
-					
-					while(true)
-					{
-						length = buff[current];
-						for (int i = current+1; i < current+length+1; i++){
-							domainName += (char)buff[i];
-						}
-						current = current + length + 1;
-						if(buff[current]==0){
-							break;
-						}
-						domainName += ".";
-					}
 					
 					System.out.println(domainName);
 						
@@ -210,7 +216,31 @@ public class UDPReceiver extends Thread {
 				// ****** Dans le cas d'un paquet reponse *****
 				else {
 						// *Lecture du Query Domain name, a partir du 13 byte
-						
+					System.out.println("reponse");
+					current += 33;
+					int ttl = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+4)).getInt();
+					current += 4;
+					/*int rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getInt();
+					current+=2;
+					String rData = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+rDLength)).toString();
+					System.out.format("%s\t%d\t%h\t%s\n", domainName, ttl, rDLength, rData);
+					List<String> addresses = qF.StartResearch(domainName);
+					boolean found = false;
+					if(addresses.size()>0){
+						for (String address : addresses) {
+							if(address==rData){
+								found = true;
+							}
+						}
+					}
+					if(!found){
+						aR.StartRecord(domainName, rData);
+					}
+					UDPSender UDPS = new UDPSender(paquetRecu.getAddress().toString(), paquetRecu.getPort(), serveur);
+					UDPS.SendPacketNow(paquetRecu);*/
+			 
+					// *Lecture du Query Domain name, a partir du 13 byte
+					
 						// *Passe par dessus Type et Class
 						
 						// *Passe par dessus les premiers champs du ressource record
