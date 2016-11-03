@@ -3,6 +3,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -142,32 +143,32 @@ public class UDPReceiver extends Thread {
 				
 				System.out.println(Arrays.toString(buff));
 				tabInputStream.read(buff);
+				String input = new String(buff);
+				int lengthName = buff[12];
+				int lengthExtention = buff[12+lengthName+1];
+				int length;
+				
+				int current = 12;
+				domainName = new String();
+				
+				while(true)
+				{
+					length = buff[current];
+					for (int i = current+1; i < current+length+1; i++){
+						domainName += (char)buff[i];
+					}
+					current = current + length + 1;
+					if(buff[current]==0){
+						break;
+					}
+					domainName += ".";
+				}
 				
 				// ****** Dans le cas d'un paquet requete (0) ***** QR = 17 bits
 				if (((buff[2] >> 7) & 1) == 0)
 				{
 					System.out.println("requete");
 					// *Lecture du Query Domain name, a partir du 13 byte
-					String input = new String(buff);
-					int lengthName = buff[12];
-					int lengthExtention = buff[12+lengthName+1];
-					int length;
-					
-					int current = 12;
-					domainName = new String();
-					
-					while(true)
-					{
-						length = buff[current];
-						for (int i = current+1; i < current+length+1; i++){
-							domainName += (char)buff[i];
-						}
-						current = current + length + 1;
-						if(buff[current]==0){
-							break;
-						}
-						domainName += ".";
-					}
 					
 					/*domainName = new String(Arrays.copyOfRange(buff, 13, 13+lengthName));
 					domainName += ".";
@@ -202,7 +203,16 @@ public class UDPReceiver extends Thread {
 				// ****** Dans le cas d'un paquet reponse *****
 				else {
 						// *Lecture du Query Domain name, a partir du 13 byte
-						
+					System.out.println("reponse");
+					current += 33;
+					int ttl = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+4)).getInt();
+					current += 4;
+					short rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getShort();
+					current+=2;
+					String rData = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+rDLength)).toString();
+					System.out.format("%s\t%d\t%h\t%s\n", domainName, ttl, rDLength, rData);
+					// *Lecture du Query Domain name, a partir du 13 byte
+					
 						// *Passe par dessus Type et Class
 						
 						// *Passe par dessus les premiers champs du ressource record
