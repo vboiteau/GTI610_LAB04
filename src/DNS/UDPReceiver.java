@@ -156,14 +156,17 @@ public class UDPReceiver extends Thread {
 					int current = 12;
 					domainName = new String();
 					
-					while(buff[current] != 0)
+					while(true)
 					{
 						length = buff[current];
 						for (int i = current+1; i < current+length+1; i++){
 							domainName += (char)buff[i];
 						}
-						domainName += ".";
 						current = current + length + 1;
+						if(buff[current]==0){
+							break;
+						}
+						domainName += ".";
 					}
 					
 					/*domainName = new String(Arrays.copyOfRange(buff, 13, 13+lengthName));
@@ -220,7 +223,7 @@ public class UDPReceiver extends Thread {
 			}
 //			serveur.close(); //closing server
 		} catch (Exception e) {
-			System.err.println("Problème à l'exécution :");
+			System.err.println("Problï¿½me ï¿½ l'exï¿½cution :");
 			e.printStackTrace(System.err);
 		}
 	}
