@@ -1,31 +1,38 @@
 package TCP;
 
 import java.net.Socket;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.sql.Timestamp;
+import java.util.Date;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 
-public class ClientTCP extends Thread {
+public class ClientTCP{
 	private Socket clientSocket = null;
 	public ClientTCP (String adrIP, int port){
 		try {
 			clientSocket = new Socket(InetAddress.getByName(adrIP), port);
+			String outputString = "";
+			BufferedReader inputPrompt = new BufferedReader( new InputStreamReader(System.in));
+			System.out.println("Say someting:");
+			String inputSentence = inputPrompt.readLine();
+			DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
+			BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+			output.writeBytes(inputSentence + '\n');
+			outputString = input.readLine();
+			Date date= new Date();
+			System.out.println("["+new Timestamp(date.getTime())+"]\t" + outputString);
+			close();
 		} catch (Exception e) {
 			System.out.println(e);
 		}
 	}
-	
-	public void run () {
-		int MAXLENGTH=256;
-		byte[ ] buff = new byte[MAXLENGTH];
-		String output = "";
+	public void close(){
 		try {
-			InputStream in = clientSocket.getInputStream();
-			in.read(buff);
-			output = new String(buff);
-			System.out.println(output);
+			clientSocket.close();
 		} catch (Exception e) {
-		    System.out.println("Error occured while server creation");
+			System.out.println(e);
 		}
-	}
+	};
 }

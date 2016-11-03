@@ -1,8 +1,4 @@
 package TCP;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.io.OutputStream;
-import java.net.InetAddress;
 
 public class ServerTCP {
     public static void main (String[] args) {
@@ -11,26 +7,19 @@ public class ServerTCP {
 	    System.exit(1);
 	}
 	int port=0;
+	ClientTCP client = null;
 	try {
 	    port = Integer.parseInt(args[1]);
-	} catch (Exception e) {
-	    System.out.println("The port argument must be an integer as port");
-	    System.exit(1);
-	}
-	System.out.format("Port:\t%d\n\n", port);
-	String data = "Hello from server";
-	try {
-	    TCPReciever reciever = new TCPReciever(args[0], port);
+
+	    TCPReciever reciever = new TCPReciever(port);
 	    reciever.start();
-		ClientTCP client = new ClientTCP(args[0], port);
-		client.start();
-	    //Socket connexionSocket = server.accept();
-	    //OutputStream out = connexionSocket.getOutputStream();
-	    //out.write(data.getBytes());
+		while (true) {
+			client = new ClientTCP(args[0], port);
+		}
 	} catch (Exception e) {
-	    System.out.println("Error occured while server creation");
+		System.out.println(e);
 	    System.exit(1);
 	}
-	
+	client.close();
     }
 };
