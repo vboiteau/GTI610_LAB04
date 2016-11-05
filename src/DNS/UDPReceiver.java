@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -167,12 +168,13 @@ public class UDPReceiver extends Thread {
 				}
 				QueryFinder qF = new QueryFinder(DNSFile);
 				AnswerRecorder aR = new AnswerRecorder(DNSFile);
+								
 				// ****** Dans le cas d'un paquet requete (0) ***** QR = 17 bits
 				if (((buff[2] >> 7) & 1) == 0)
 				{
 					// *Lecture du Query Domain name, a partir du 13 byte
 					
-					System.out.println(domainName);
+					System.out.format("requete: %s\n",domainName);
 						
 					// *Sauvegarde de l'adresse, du port et de l'identifiant de la requete
 					String id = String.valueOf((char)buff[0]+(char)buff[1]);
@@ -185,6 +187,7 @@ public class UDPReceiver extends Thread {
 					// *Si le mode est redirection seulement
 					if (RedirectionSeulement) {
 						// *Rediriger le paquet vers le serveur DNS
+						System.out.println("server will only redirect");
 						InetAddress dns = Inet4Address.getByName(SERVER_DNS);
 						paquetRecu.setAddress(dns);
 						paquetRecu.setPort(serveur.getLocalPort());
@@ -198,46 +201,67 @@ public class UDPReceiver extends Thread {
 						List<String> list = qf.StartResearch(domainName);
 
 						// *Si la correspondance n'est pas trouvee
-						if (list == null) {
+						if (list.isEmpty()) {
 							// *Rediriger le paquet vers le serveur DNS
-							serveur.send(paquetRecu);
+							System.out.println("Paquet rediriger au serveur");
+							InetAddress dns = Inet4Address.getByName(SERVER_DNS);
+							System.out.println(dns);
+							paquetRecu.setAddress(dns);
+							paquetRecu.setPort(portRedirect);
+							UDPSender UDPS = new UDPSender(paquetRecu.getAddress(),paquetRecu.getPort(), serveur);
+							UDPS.SendPacketNow(paquetRecu);
 						}
 						// *Sinon	
 						else {
 							// *Creer le paquet de reponse a l'aide du UDPAnswerPaquetCreator
 							UDPAnswerPacketCreator creatorUDP = UDPAnswerPacketCreator.getInstance();
-							creatorUDP.CreateAnswerPacket(paquetRecu.getData(), list);
-							UDPAnswerPacketCreator.Answerpacket answer = creatorUDP.getAnswrpacket();
+							byte[] answer_bytes = creatorUDP.CreateAnswerPacket(paquetRecu.getData(), list);
+							DatagramPacket answer = new DatagramPacket(answer_bytes, answer_bytes.length, paquetRecu.getAddress(), paquetRecu.getPort());
 							// *Placer ce paquet dans le socket
-							// *Envoyer le paquet
+							// *Envoyer le paquet\
+							System.out.format("Suppose to send from here\n\n%s\t%d\n",getAdrIP(), port);
+							serveur.send(answer);
 						}
 					}
 				}
 				// ****** Dans le cas d'un paquet reponse *****
 				else {
 						// *Lecture du Query Domain name, a partir du 13 byte
-					System.out.println("reponse");
-					current += 33;
+					System.out.format("response: %s current: %d\n", domainName, current);
+					current += 11;
 					int ttl = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+4)).getInt();
 					current += 4;
-					/*int rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getInt();
+					System.out.println(ttl);
+					short rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getShort();
 					current+=2;
-					String rData = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+rDLength)).toString();
-					System.out.format("%s\t%d\t%h\t%s\n", domainName, ttl, rDLength, rData);
-					List<String> addresses = qF.StartResearch(domainName);
-					boolean found = false;
-					if(addresses.size()>0){
-						for (String address : addresses) {
-							if(address==rData){
-								found = true;
-							}
+					System.out.format("%d\t%d\n", buff.length, current);
+					byte[] rData = Arrays.copyOfRange(buff, current, current+rDLength);
+					String address = "";
+					if (rDLength != 4) {
+						System.out.println("If not 4 number return failed.");
+						paquetRecu.setAddress(serveur.getLocalAddress());
+						paquetRecu.setPort(serveur.getLocalPort());
+						serveur.send(paquetRecu);
+						continue;
+					}
+					for(int i=0; i<rDLength; i++){
+						if(i>0){
+							address+=".";
 						}
+						address+=rData[i] & 0xFF;
 					}
-					if(!found){
-						aR.StartRecord(domainName, rData);
-					}
-					UDPSender UDPS = new UDPSender(paquetRecu.getAddress().toString(), paquetRecu.getPort(), serveur);
-					UDPS.SendPacketNow(paquetRecu);*/
+					
+					aR.StartRecord(domainName, address);
+					
+					System.out.format("%s\t%d\t%d\t%s\n", domainName, ttl, rDLength, address);
+					List<String> list = qF.StartResearch(domainName);
+					
+					UDPAnswerPacketCreator creatorUDP = UDPAnswerPacketCreator.getInstance();
+					byte[] answer_bytes = creatorUDP.CreateAnswerPacket(paquetRecu.getData(), list);
+					System.out.format("Suppose to send from here\n\n%s\t%d\n",getAdrIP(),port);
+					DatagramPacket answer = new DatagramPacket(answer_bytes, answer_bytes.length, InetAddress.getByName(getAdrIP().substring(1)), port);
+						
+					serveur.send(answer);
 			 
 					// *Lecture du Query Domain name, a partir du 13 byte
 					
@@ -259,7 +283,7 @@ public class UDPReceiver extends Thread {
 						// *Envoyer le paquet
 				}
 			}
-//			serveur.close(); //closing server
+			serveur.close(); //closing server
 		} catch (Exception e) {
 			System.err.println("Probl�me � l'ex�cution :");
 			e.printStackTrace(System.err);

@@ -1,3 +1,4 @@
+import java.net.DatagramPacket;
 import java.util.List;
 
 /**
@@ -19,6 +20,14 @@ public class UDPAnswerPacketCreator {
 	 */
 	public Answerpacket getAnswrpacket(){
 		return answer_pkt;
+	}
+
+	/** 
+	 * Doit etre utiliser apres CreateAnswerPacket
+	 * @return le packet de reponse creer
+	 */
+	public DatagramPacket getUDP(){
+		return new DatagramPacket(answer_pkt.bytes, answer_pkt.longueur);
 	}
 
 	
@@ -190,7 +199,6 @@ public class UDPAnswerPacketCreator {
 //			System.out.print(Integer.toHexString(answer.bytes[i] & 0xff).toString() + " ");
 //		}
 //		System.out.println("\r");
-		
 		return answer.bytes;
 	}
 	
