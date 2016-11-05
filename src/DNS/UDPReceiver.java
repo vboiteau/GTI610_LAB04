@@ -69,6 +69,7 @@ public class UDPReceiver extends Thread {
 	private String domainName = "none";
 	private String DNSFile = null;
 	private boolean RedirectionSeulement = false;
+	private boolean RedirectAnswered = true;
 	
 	private class ClientInfo { //quick container
 		public String client_ip = null;
@@ -186,12 +187,24 @@ public class UDPReceiver extends Thread {
 
 					// *Si le mode est redirection seulement
 					if (RedirectionSeulement) {
-						// *Rediriger le paquet vers le serveur DNS
-						System.out.println("server will only redirect");
-						InetAddress dns = Inet4Address.getByName(SERVER_DNS);
-						paquetRecu.setAddress(dns);
-						paquetRecu.setPort(serveur.getLocalPort());
-						serveur.send(paquetRecu);
+						if(RedirectAnswered){
+							setAdrIP(adrIP);
+							RedirectAnswered = false;
+							System.out.println("Paquet rediriger au serveur");
+							InetAddress dns = Inet4Address.getByName(SERVER_DNS);
+							System.out.println(dns);
+							paquetRecu.setAddress(dns);
+							paquetRecu.setPort(portRedirect);
+							UDPSender UDPS = new UDPSender(paquetRecu.getAddress(),paquetRecu.getPort(), serveur);
+							UDPS.SendPacketNow(paquetRecu);
+						} else {
+							System.out.println("linked redirection not responding.");
+							UDPAnswerPacketCreator creatorUDP = UDPAnswerPacketCreator.getInstance();
+							List<String> empty = new ArrayList<String>();
+							byte[] answer_bytes = creatorUDP.CreateAnswerPacket(paquetRecu.getData(), empty);
+							DatagramPacket answer = new DatagramPacket(answer_bytes, answer_bytes.length, InetAddress.getByName(getAdrIP().substring(1)), port);
+							serveur.send(answer);
+						}
 					}
 					// *Sinon
 					else {
@@ -203,13 +216,20 @@ public class UDPReceiver extends Thread {
 						// *Si la correspondance n'est pas trouvee
 						if (list.isEmpty()) {
 							// *Rediriger le paquet vers le serveur DNS
-							System.out.println("Paquet rediriger au serveur");
-							InetAddress dns = Inet4Address.getByName(SERVER_DNS);
-							System.out.println(dns);
-							paquetRecu.setAddress(dns);
-							paquetRecu.setPort(portRedirect);
-							UDPSender UDPS = new UDPSender(paquetRecu.getAddress(),paquetRecu.getPort(), serveur);
-							UDPS.SendPacketNow(paquetRecu);
+							if(RedirectAnswered){
+								setAdrIP(adrIP);
+								RedirectAnswered = false;
+								System.out.println("Paquet rediriger au serveur");
+								InetAddress dns = Inet4Address.getByName(SERVER_DNS);
+								System.out.println(dns);
+								paquetRecu.setAddress(dns);
+								paquetRecu.setPort(portRedirect);
+								UDPSender UDPS = new UDPSender(paquetRecu.getAddress(),paquetRecu.getPort(), serveur);
+								UDPS.SendPacketNow(paquetRecu);
+							} else {
+								System.out.println("linked redirection not responding.");
+							}
+							
 						}
 						// *Sinon	
 						else {
@@ -226,6 +246,7 @@ public class UDPReceiver extends Thread {
 				}
 				// ****** Dans le cas d'un paquet reponse *****
 				else {
+					RedirectAnswered = true;
 						// *Lecture du Query Domain name, a partir du 13 byte
 					System.out.format("response: %s current: %d\n", domainName, current);
 					current += 11;
@@ -238,11 +259,8 @@ public class UDPReceiver extends Thread {
 					byte[] rData = Arrays.copyOfRange(buff, current, current+rDLength);
 					String address = "";
 					if (rDLength != 4) {
-						System.out.println("If not 4 number return failed.");
-						paquetRecu.setAddress(serveur.getLocalAddress());
-						paquetRecu.setPort(serveur.getLocalPort());
-						serveur.send(paquetRecu);
-						continue;
+						DatagramPacket answer = new DatagramPacket(new byte[0], 0, InetAddress.getByName(getAdrIP().substring(1)), port);
+						serveur.send(answer);
 					}
 					for(int i=0; i<rDLength; i++){
 						if(i>0){
@@ -261,8 +279,8 @@ public class UDPReceiver extends Thread {
 					System.out.format("Suppose to send from here\n\n%s\t%d\n",getAdrIP(),port);
 					DatagramPacket answer = new DatagramPacket(answer_bytes, answer_bytes.length, InetAddress.getByName(getAdrIP().substring(1)), port);
 						
+					
 					serveur.send(answer);
-			 
 					// *Lecture du Query Domain name, a partir du 13 byte
 					
 						// *Passe par dessus Type et Class
