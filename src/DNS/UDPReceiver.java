@@ -3,6 +3,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -169,38 +170,48 @@ public class UDPReceiver extends Thread {
 				// ****** Dans le cas d'un paquet requete (0) ***** QR = 17 bits
 				if (((buff[2] >> 7) & 1) == 0)
 				{
-					System.out.println("requete");
 					// *Lecture du Query Domain name, a partir du 13 byte
 					
-					/*domainName = new String(Arrays.copyOfRange(buff, 13, 13+lengthName));
-					domainName += ".";
-					domainName += new String(Arrays.copyOfRange(buff, 14+lengthName, 14+lengthName+lengthExtention));
-					*/
-					/*tabInputStream.read(buff, 13+1+lengthName, 1);
-					lengthExtention = Integer.parseInt(Arrays.toString(buff));
-					
-					tabInputStream.read(buff, 13+1+lengthName+1, lengthExtention);
-					domainName += Arrays.toString(buff);*/
-					
 					System.out.println(domainName);
-					System.out.println(new String(Arrays.copyOfRange(buff, 13, 13+lengthName)));
 						
 					// *Sauvegarde de l'adresse, du port et de l'identifiant de la requete
+					String id = String.valueOf((char)buff[0]+(char)buff[1]);
+					adrIP = paquetRecu.getAddress().toString();
+					port = paquetRecu.getPort();
 					
-					
+					System.out.println(serveur.getLocalAddress());
+					System.out.println(Inet4Address.getByName(SERVER_DNS));
 
 					// *Si le mode est redirection seulement
+					if (RedirectionSeulement) {
 						// *Rediriger le paquet vers le serveur DNS
+						InetAddress dns = Inet4Address.getByName(SERVER_DNS);
+						paquetRecu.setAddress(dns);
+						paquetRecu.setPort(serveur.getLocalPort());
+						serveur.send(paquetRecu);
+					}
 					// *Sinon
+					else {
 						// *Rechercher l'adresse IP associe au Query Domain name
-						// dans le fichier de correspondance de ce serveur					
+						// dans le fichier de correspondance de ce serveur	
+						QueryFinder qf = new QueryFinder(DNSFile);
+						List<String> list = qf.StartResearch(domainName);
 
 						// *Si la correspondance n'est pas trouvee
+						if (list == null) {
 							// *Rediriger le paquet vers le serveur DNS
+							serveur.send(paquetRecu);
+						}
 						// *Sinon	
+						else {
 							// *Creer le paquet de reponse a l'aide du UDPAnswerPaquetCreator
+							UDPAnswerPacketCreator creatorUDP = UDPAnswerPacketCreator.getInstance();
+							creatorUDP.CreateAnswerPacket(paquetRecu.getData(), list);
+							UDPAnswerPacketCreator.Answerpacket answer = creatorUDP.getAnswrpacket();
 							// *Placer ce paquet dans le socket
 							// *Envoyer le paquet
+						}
+					}
 				}
 				// ****** Dans le cas d'un paquet reponse *****
 				else {
@@ -209,7 +220,7 @@ public class UDPReceiver extends Thread {
 					current += 33;
 					int ttl = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+4)).getInt();
 					current += 4;
-					short rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getShort();
+					/*int rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getInt();
 					current+=2;
 					String rData = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+rDLength)).toString();
 					System.out.format("%s\t%d\t%h\t%s\n", domainName, ttl, rDLength, rData);
@@ -226,7 +237,7 @@ public class UDPReceiver extends Thread {
 						aR.StartRecord(domainName, rData);
 					}
 					UDPSender UDPS = new UDPSender(paquetRecu.getAddress().toString(), paquetRecu.getPort(), serveur);
-					UDPS.SendPacketNow(paquetRecu);
+					UDPS.SendPacketNow(paquetRecu);*/
 			 
 					// *Lecture du Query Domain name, a partir du 13 byte
 					
