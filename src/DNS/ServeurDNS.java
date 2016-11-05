@@ -27,8 +27,9 @@ public class ServeurDNS {
 		}
 		
 		UDPReceiver UDPR = new UDPReceiver();
-		File f = null;	
-		UDPR.setport(53);
+		File f = null;
+		
+		UDPR.setport((System.getProperty("os.name").toLowerCase().indexOf("mac")>=0?1553:53));
 		
 		/* cas ou l'argument = default
 		 Le serveur DNS de redirection par defaut est celui de l'ecole "10.162.8.51" 
@@ -57,7 +58,7 @@ public class ServeurDNS {
 				UDPR.start();
 			}
 			else{
-				System.out.print("L'exécution par défaut n'a pas d'autres arguments");
+				System.out.print("L'exï¿½cution par dï¿½faut n'a pas d'autres arguments");
 			}
 		}
 		else{
