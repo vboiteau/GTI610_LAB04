@@ -130,7 +130,7 @@ public class UDPReceiver extends Thread {
 			
 			// *Boucle infinie de recpetion
 			while (!this.stop) {
-				byte[] buff = new byte[0xFF];
+				byte[] buff = new byte[1024];
 				DatagramPacket paquetRecu = new DatagramPacket(buff,buff.length);
 				System.out.println("Serveur DNS  "+serveur.getLocalAddress()+"  en attente sur le port: "+ serveur.getLocalPort());
 
@@ -271,30 +271,27 @@ public class UDPReceiver extends Thread {
 					//  au hostname (dans le fond saut de 16 bytes)
 					System.out.format("response: %s current: %d\n", domainName, current);
 					current += 11;
-					int ttl = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+4)).getInt();
 					
-					current += 4;
-					System.out.println(ttl);
-					short rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getShort();
-					
-					current += 2;
-					System.out.format("%d\t%d\n", buff.length, current);
-					byte[] rData = null;
-					String address = "";
 					
 					// *Capture de ou des adresse(s) IP (ANCOUNT est le nombre
 					// de reponses retournees)	
 					int anCount = buff[6] + buff[7];
-					for (int j = 0; j < anCount-1; j++)
+					for (int j = 0; j < anCount; j++)
 					{
+						int ttl = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+4)).getInt();
 						
+						current += 4;
+						System.out.println(ttl);
+						short rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getShort();
+						
+						current += 2;
+						System.out.format("%d\t%d\n", buff.length, current);
+						byte[] rData = null;
+						String address = "";
 						// *Ajouter la ou les correspondance(s) dans le fichier DNS
 						// si elles ne y sont pas deja
 						if (anCount > 0) {
-							if (buff.length < current + rDLength) {
-								System.out.format("skiping \t %d \t %d \t %d \t", buff.length, j, anCount, current);
-								continue;
-							}
+							System.out.format("skiping \t %d \t %d \t %d \t %d \t %d \n", buff.length, j, anCount, current, rDLength);
 							rData = Arrays.copyOfRange(buff, current, current+rDLength);
 							DatagramPacket answer = new DatagramPacket(
 									new byte[0], 
@@ -304,18 +301,24 @@ public class UDPReceiver extends Thread {
 							);
 							serveur.send(answer);
                             address = "";
-                            for(int i=0; i<rDLength; i++){
-                                if(i>0){
-                                    address+=".";
+                            if	(rDLength==4){
+                            	for(int i=0; i<rDLength; i++){
+                                    if(i>0){
+                                        address+=".";
+                                    }
+                                    address+=rData[i] & 0xFF;
                                 }
-                                address+=rData[i] & 0xFF;
+                                aR.StartRecord(domainName, address);
                             }
-                            System.out.format("rDATALength\t%d\n%s\n", rDLength, address);				
-                            aR.StartRecord(domainName, address);
-                            current += 16;
+                            current += rDLength;
+                            current += 6;
+                            if (current >= buff.length) {
+                            	break;
+                            }
 						}
+						System.out.format("%s\t%d\t%d\t%s\n", domainName, ttl, rDLength, address);
+
 					}
-					System.out.format("%s\t%d\t%d\t%s\n", domainName, ttl, rDLength, address);
 					List<String> list = qF.StartResearch(domainName);
 					
 					UDPAnswerPacketCreator creatorUDP = UDPAnswerPacketCreator.getInstance();
