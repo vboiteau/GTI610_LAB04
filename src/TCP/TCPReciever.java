@@ -10,9 +10,10 @@ public class TCPReciever extends Thread {
     protected ServerSocket server =null;
     
     public TCPReciever(int Port) {
-        port = Port;
+        this.port = Port;
         System.out.println(this.port);
         try {
+        	System.out.println(this.port);
             server = new ServerSocket(this.port); 
         } catch (Exception e) {
             System.out.println(e);
@@ -22,6 +23,7 @@ public class TCPReciever extends Thread {
     public void run () {
 		try {
 		    while(true){
+			    System.out.format("listening, %s\n", this.server.getLocalSocketAddress());
 			    Socket connexionSocket = this.server.accept();
 		    	BufferedReader input = new BufferedReader(new InputStreamReader(connexionSocket.getInputStream()));
 		        DataOutputStream output = new DataOutputStream(connexionSocket.getOutputStream());
