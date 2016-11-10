@@ -142,12 +142,11 @@ public class UDPReceiver extends Thread {
 
 				// *Creation d'un DataInputStream ou ByteArrayInputStream pour
 				// manipuler les bytes du paquet
-
 				ByteArrayInputStream tabInputStream = new ByteArrayInputStream (paquetRecu.getData());
 				
 				System.out.println(Arrays.toString(buff));
 				tabInputStream.read(buff);
-				String input = new String(buff);
+				
 				int lengthName = buff[12];
 				int lengthExtention = buff[12+lengthName+1];
 				int length;
@@ -155,6 +154,7 @@ public class UDPReceiver extends Thread {
 				int current = 12;
 				domainName = new String();
 				
+				// *Lecture du Query Domain name, a partir du 13 byte
 				while(true)
 				{
 					length = buff[current];
@@ -173,9 +173,7 @@ public class UDPReceiver extends Thread {
 				// ****** Dans le cas d'un paquet requete (0) ***** QR = 17 bits
 				if (((buff[2] >> 7) & 1) == 0)
 				{
-					// *Lecture du Query Domain name, a partir du 13 byte
-					
-					System.out.format("requete: %s\n",domainName);
+					System.out.format("requete: %s\t%d\n",domainName,current);
 						
 					// *Sauvegarde de l'adresse, du port et de l'identifiant de la requete
 					String id = String.valueOf((char)buff[0]+(char)buff[1]);
@@ -190,19 +188,29 @@ public class UDPReceiver extends Thread {
 						if(RedirectAnswered){
 							setAdrIP(adrIP);
 							RedirectAnswered = false;
+							
 							System.out.println("Paquet rediriger au serveur");
 							InetAddress dns = Inet4Address.getByName(SERVER_DNS);
+							
 							System.out.println(dns);
 							paquetRecu.setAddress(dns);
 							paquetRecu.setPort(portRedirect);
+							
 							UDPSender UDPS = new UDPSender(paquetRecu.getAddress(),paquetRecu.getPort(), serveur);
 							UDPS.SendPacketNow(paquetRecu);
 						} else {
 							System.out.println("linked redirection not responding.");
 							UDPAnswerPacketCreator creatorUDP = UDPAnswerPacketCreator.getInstance();
+							
 							List<String> empty = new ArrayList<String>();
 							byte[] answer_bytes = creatorUDP.CreateAnswerPacket(paquetRecu.getData(), empty);
-							DatagramPacket answer = new DatagramPacket(answer_bytes, answer_bytes.length, InetAddress.getByName(getAdrIP().substring(1)), port);
+							
+							DatagramPacket answer = new DatagramPacket(
+									answer_bytes, 
+									answer_bytes.length, 
+									InetAddress.getByName(getAdrIP().substring(1)), 
+									port
+							);
 							serveur.send(answer);
 						}
 					}
@@ -220,10 +228,12 @@ public class UDPReceiver extends Thread {
 								setAdrIP(adrIP);
 								RedirectAnswered = false;
 								System.out.println("Paquet rediriger au serveur");
+								
 								InetAddress dns = Inet4Address.getByName(SERVER_DNS);
 								System.out.println(dns);
 								paquetRecu.setAddress(dns);
 								paquetRecu.setPort(portRedirect);
+								
 								UDPSender UDPS = new UDPSender(paquetRecu.getAddress(),paquetRecu.getPort(), serveur);
 								UDPS.SendPacketNow(paquetRecu);
 							} else {
@@ -236,8 +246,15 @@ public class UDPReceiver extends Thread {
 							// *Creer le paquet de reponse a l'aide du UDPAnswerPaquetCreator
 							UDPAnswerPacketCreator creatorUDP = UDPAnswerPacketCreator.getInstance();
 							byte[] answer_bytes = creatorUDP.CreateAnswerPacket(paquetRecu.getData(), list);
-							DatagramPacket answer = new DatagramPacket(answer_bytes, answer_bytes.length, paquetRecu.getAddress(), paquetRecu.getPort());
+							
 							// *Placer ce paquet dans le socket
+							DatagramPacket answer = new DatagramPacket(
+									answer_bytes, 
+									answer_bytes.length, 
+									paquetRecu.getAddress(), 
+									paquetRecu.getPort()
+							);
+							
 							// *Envoyer le paquet\
 							System.out.format("Suppose to send from here\n\n%s\t%d\n",getAdrIP(), port);
 							serveur.send(answer);
@@ -247,63 +264,78 @@ public class UDPReceiver extends Thread {
 				// ****** Dans le cas d'un paquet reponse *****
 				else {
 					RedirectAnswered = true;
-						// *Lecture du Query Domain name, a partir du 13 byte
+					
+					// *Passe par dessus Type et Class
+					// *Passe par dessus les premiers champs du ressource record
+					//  pour arriver au ressource data qui contient l'adresse IP associe
+					//  au hostname (dans le fond saut de 16 bytes)
 					System.out.format("response: %s current: %d\n", domainName, current);
 					current += 11;
 					int ttl = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+4)).getInt();
+					
 					current += 4;
 					System.out.println(ttl);
 					short rDLength = ByteBuffer.wrap(Arrays.copyOfRange(buff, current, current+2)).getShort();
-					current+=2;
+					
+					current += 2;
 					System.out.format("%d\t%d\n", buff.length, current);
-					byte[] rData = Arrays.copyOfRange(buff, current, current+rDLength);
+					byte[] rData = null;
 					String address = "";
-					if (rDLength != 4) {
-						DatagramPacket answer = new DatagramPacket(new byte[0], 0, InetAddress.getByName(getAdrIP().substring(1)), port);
-						serveur.send(answer);
-					}
-					for(int i=0; i<rDLength; i++){
-						if(i>0){
-							address+=".";
+					
+					// *Capture de ou des adresse(s) IP (ANCOUNT est le nombre
+					// de reponses retournees)	
+					int anCount = buff[6] + buff[7];
+					for (int j = 0; j < anCount; j++)
+					{
+						rData = Arrays.copyOfRange(buff, current, current+rDLength);
+						// *Ajouter la ou les correspondance(s) dans le fichier DNS
+						// si elles ne y sont pas deja
+						if (anCount > 0) {
+							DatagramPacket answer = new DatagramPacket(
+									new byte[0], 
+									0, 
+									InetAddress.getByName(getAdrIP().substring(1)), 
+									port
+							);
+							serveur.send(answer);
 						}
-						address+=rData[i] & 0xFF;
+						
+						for(int i=0; i<rDLength; i++){
+							if(i>0){
+								address+=".";
+							}
+							address+=rData[i] & 0xFF;
+						}
+						
+						aR.StartRecord(domainName, address);
+						current += 16;
 					}
-					
-					aR.StartRecord(domainName, address);
-					
 					System.out.format("%s\t%d\t%d\t%s\n", domainName, ttl, rDLength, address);
 					List<String> list = qF.StartResearch(domainName);
 					
 					UDPAnswerPacketCreator creatorUDP = UDPAnswerPacketCreator.getInstance();
 					byte[] answer_bytes = creatorUDP.CreateAnswerPacket(paquetRecu.getData(), list);
+					
+					// *Faire parvenir le paquet reponse au demandeur original,
+					// ayant emis une requete avec cet identifiant
+					
 					System.out.format("Suppose to send from here\n\n%s\t%d\n",getAdrIP(),port);
-					DatagramPacket answer = new DatagramPacket(answer_bytes, answer_bytes.length, InetAddress.getByName(getAdrIP().substring(1)), port);
-						
 					
+					// *Placer ce paquet dans le socket
+					DatagramPacket answer = new DatagramPacket(
+							answer_bytes, 
+							answer_bytes.length, 
+							InetAddress.getByName(getAdrIP().substring(1)), 
+							port
+					);						
+					
+					// *Envoyer le paquet
 					serveur.send(answer);
-					// *Lecture du Query Domain name, a partir du 13 byte
-					
-						// *Passe par dessus Type et Class
-						
-						// *Passe par dessus les premiers champs du ressource record
-						// pour arriver au ressource data qui contient l'adresse IP associe
-						//  au hostname (dans le fond saut de 16 bytes)
-						
-						// *Capture de ou des adresse(s) IP (ANCOUNT est le nombre
-						// de r�ponses retourn�es)			
-					
-						// *Ajouter la ou les correspondance(s) dans le fichier DNS
-						// si elles ne y sont pas deja
-						
-						// *Faire parvenir le paquet reponse au demandeur original,
-						// ayant emis une requete avec cet identifiant				
-						// *Placer ce paquet dans le socket
-						// *Envoyer le paquet
 				}
 			}
 			serveur.close(); //closing server
 		} catch (Exception e) {
-			System.err.println("Probl�me � l'ex�cution :");
+			System.err.println("Probleme a l'execution :");
 			e.printStackTrace(System.err);
 		}
 	}
