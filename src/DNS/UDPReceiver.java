@@ -285,12 +285,17 @@ public class UDPReceiver extends Thread {
 					// *Capture de ou des adresse(s) IP (ANCOUNT est le nombre
 					// de reponses retournees)	
 					int anCount = buff[6] + buff[7];
-					for (int j = 0; j < anCount; j++)
+					for (int j = 0; j < anCount-1; j++)
 					{
-						rData = Arrays.copyOfRange(buff, current, current+rDLength);
+						
 						// *Ajouter la ou les correspondance(s) dans le fichier DNS
 						// si elles ne y sont pas deja
 						if (anCount > 0) {
+							if (buff.length < current + rDLength) {
+								System.out.format("skiping \t %d \t %d \t %d \t", buff.length, j, anCount, current);
+								continue;
+							}
+							rData = Arrays.copyOfRange(buff, current, current+rDLength);
 							DatagramPacket answer = new DatagramPacket(
 									new byte[0], 
 									0, 
@@ -298,17 +303,17 @@ public class UDPReceiver extends Thread {
 									port
 							);
 							serveur.send(answer);
+                            address = "";
+                            for(int i=0; i<rDLength; i++){
+                                if(i>0){
+                                    address+=".";
+                                }
+                                address+=rData[i] & 0xFF;
+                            }
+                            System.out.format("rDATALength\t%d\n%s\n", rDLength, address);				
+                            aR.StartRecord(domainName, address);
+                            current += 16;
 						}
-						
-						for(int i=0; i<rDLength; i++){
-							if(i>0){
-								address+=".";
-							}
-							address+=rData[i] & 0xFF;
-						}
-						
-						aR.StartRecord(domainName, address);
-						current += 16;
 					}
 					System.out.format("%s\t%d\t%d\t%s\n", domainName, ttl, rDLength, address);
 					List<String> list = qF.StartResearch(domainName);
