@@ -32,6 +32,7 @@ local.properties
 
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+*.class
 
 # Java annotation processor (APT)
 .factorypath

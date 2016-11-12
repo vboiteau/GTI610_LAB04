@@ -12,18 +12,18 @@ public class ClientTCP{
 	private Socket clientSocket = null;
 	public ClientTCP (String adrIP, int port){
 		try {
-			clientSocket = new Socket(InetAddress.getByName(adrIP), port);
 			String outputString = "";
 			BufferedReader inputPrompt = new BufferedReader( new InputStreamReader(System.in));
 			System.out.println("Say someting:");
 			String inputSentence = inputPrompt.readLine();
+			clientSocket = new Socket(InetAddress.getByName(adrIP), port);
 			DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
 			BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			output.writeBytes(inputSentence + '\n');
 			outputString = input.readLine();
+			close();
 			Date date= new Date();
 			System.out.println("["+new Timestamp(date.getTime())+"]\t" + outputString);
-			close();
 		} catch (Exception e) {
 			System.out.println(e);
 		}
